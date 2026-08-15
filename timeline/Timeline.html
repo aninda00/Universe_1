@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Universe_1 — Timeline</title>
+<style>
+  body { font-family: sans-serif; background: #111; color: #eee; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; font-weight: 500; margin-bottom: 20px; }
+  #viz { overflow-x: auto; }
+  .line { stroke: #444; stroke-width: 2; }
+  .dot { fill: #4a9eff; }
+  .dot-future { fill: #d85a30; }
+  .box { fill: #1b2a3d; stroke: #4a9eff; stroke-width: 1; rx: 8; }
+  .box-future { fill: #3d1f13; stroke: #d85a30; stroke-width: 1; rx: 8; }
+  .label { fill: #cfe4ff; font-size: 12px; font-weight: 600; text-anchor: middle; }
+  .label-future { fill: #f5c4b3; font-size: 12px; font-weight: 600; text-anchor: middle; }
+  .desc { fill: #9fbfe0; font-size: 11px; text-anchor: middle; }
+  .desc-future { fill: #e0a98f; font-size: 11px; text-anchor: middle; }
+  #err { color: #ff6b6b; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Universe_1 — Timeline</h1>
+<div id="err"></div>
+<div id="viz"></div>
+
+<script>
+async function loadAndRender() {
+  const errEl = document.getElementById('err');
+  let text;
+  try {
+    const res = await fetch('timeline.md');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    text = await res.text();
+  } catch (e) {
+    errEl.textContent = 'Could not load timeline.md: ' + e.message;
+    return;
+  }
+  render(text);
+}
+
+function parseTimeline(text) {
+  const lines = text.split(/\r?\n/);
+  const events = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    const item = line.match(/^-\s+(.*)/);
+    if (!item) continue;
+    const content = item[1];
+    let label, desc, future = false;
+    const dash = content.indexOf(' - ');
+    if (content.startsWith('[') && content.includes(']')) {
+      label = content.match(/\[(.*?)\]/)[1];
+      desc = content.slice(content.indexOf(']') + 1).replace(/^\s*-\s*/, '').trim();
+      future = true;
+    } else if (dash > -1) {
+      label = content.slice(0, dash).trim();
+      desc = content.slice(dash + 3).trim();
+    } else {
+      label = content;
+      desc = '';
+    }
+    if (/AD\b/.test(label)) {
+      const yr = parseInt(label);
+      if (!isNaN(yr) && yr > 2026) future = true;
+    }
+    events.push({ label, desc, future });
+  }
+  return events;
+}
+
+function escXml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function truncate(s, n) {
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+function render(text) {
+  const errEl = document.getElementById('err');
+  const vizEl = document.getElementById('viz');
+  errEl.textContent = '';
+  let events;
+  try {
+    events = parseTimeline(text);
+    if (!events.length) throw new Error('No events found (need - list items)');
+  } catch (e) {
+    errEl.textContent = 'Could not parse timeline.md: ' + e.message;
+    return;
+  }
+
+  const colW = 190;
+  const y = 90;
+  const svgW = Math.max(600, events.length * colW + 40);
+  const svgH = 180;
+
+  let svg = '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" width="' + svgW + '">';
+  svg += '<line x1="20" y1="' + y + '" x2="' + (20 + (events.length - 1) * colW) + '" y2="' + y + '" class="line"/>';
+
+  events.forEach((ev, i) => {
+    const x = 20 + i * colW;
+    const dotCls = ev.future ? 'dot-future' : 'dot';
+    const boxCls = ev.future ? 'box-future' : 'box';
+    const labelCls = ev.future ? 'label-future' : 'label';
+    const descCls = ev.future ? 'desc-future' : 'desc';
+    const above = i % 2 === 0;
+    const boxY = above ? y - 60 : y + 14;
+    const boxH = ev.desc ? 46 : 30;
+    const labelY = boxY + 18;
+    const descY = boxY + 35;
+
+    svg += '<circle cx="' + x + '" cy="' + y + '" r="7" class="' + dotCls + '"/>';
+    svg += '<rect x="' + (x - 85) + '" y="' + boxY + '" width="170" height="' + boxH + '" class="' + boxCls + '"/>';
+    svg += '<text x="' + x + '" y="' + labelY + '" class="' + labelCls + '">' + escXml(ev.label) + '</text>';
+    if (ev.desc) {
+      svg += '<text x="' + x + '" y="' + descY + '" class="' + descCls + '">' + escXml(truncate(ev.desc, 26)) + '</text>';
+    }
+  });
+
+  svg += '</svg>';
+  vizEl.innerHTML = svg;
+}
+
+loadAndRender();
+</script>
+</body>
+</html>
