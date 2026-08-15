@@ -3,26 +3,69 @@
 <head>
 <meta charset="UTF-8">
 <title>Universe_1 — Timeline</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <style>
-  body { font-family: sans-serif; background: #111; color: #eee; margin: 0; padding: 24px; }
-  h1 { font-size: 20px; font-weight: 500; margin-bottom: 20px; }
-  #viz { overflow-x: auto; }
-  .line { stroke: #444; stroke-width: 2; }
-  .dot { fill: #4a9eff; }
-  .dot-future { fill: #d85a30; }
-  .box { fill: #1b2a3d; stroke: #4a9eff; stroke-width: 1; rx: 8; }
-  .box-future { fill: #3d1f13; stroke: #d85a30; stroke-width: 1; rx: 8; }
-  .label { fill: #cfe4ff; font-size: 12px; font-weight: 600; text-anchor: middle; }
-  .label-future { fill: #f5c4b3; font-size: 12px; font-weight: 600; text-anchor: middle; }
-  .desc { fill: #9fbfe0; font-size: 11px; text-anchor: middle; }
-  .desc-future { fill: #e0a98f; font-size: 11px; text-anchor: middle; }
-  #err { color: #ff6b6b; font-size: 13px; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    background: radial-gradient(ellipse at 50% 0%, #14192b 0%, #0a0c14 60%);
+    color: #e8ecf7;
+    margin: 0;
+    overflow: hidden;
+    height: 100vh;
+  }
+  h1 {
+    position: absolute;
+    top: 20px;
+    left: 28px;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    margin: 0;
+    z-index: 10;
+    color: #9db4ff;
+    text-shadow: 0 0 20px rgba(90,120,255,0.4);
+  }
+  #hint {
+    position: absolute;
+    top: 24px;
+    right: 28px;
+    font-size: 12px;
+    color: #5a6584;
+    z-index: 10;
+  }
+  #err { position: absolute; top: 60px; left: 28px; color: #ff7b7b; font-size: 13px; z-index: 10; }
+  svg { width: 100vw; height: 100vh; display: block; cursor: grab; }
+  svg:active { cursor: grabbing; }
+
+  .node-box {
+    fill: rgba(20, 26, 46, 0.92);
+    stroke-width: 1.5;
+    rx: 10;
+  }
+  .node-past .node-box { stroke: #4a8fe7; }
+  .node-future .node-box { stroke: #e2703a; }
+  .node-past .dot { fill: #4a8fe7; filter: drop-shadow(0 0 6px #4a8fe7aa); }
+  .node-future .dot { fill: #e2703a; filter: drop-shadow(0 0 6px #e2703aaa); }
+  .node-past .label { fill: #bcd4ff; }
+  .node-future .label { fill: #ffcbb0; }
+  .node-past .desc { fill: #6f88b8; }
+  .node-future .desc { fill: #c98f6f; }
+  .label { font-size: 13px; font-weight: 600; }
+  .desc { font-size: 11px; }
+  .icon { font-size: 15px; }
+  .path-line { fill: none; stroke: url(#pathGrad); stroke-width: 2.5; opacity: 0.7; }
+
+  .node { cursor: pointer; }
+  .node .node-box { transition: stroke-width 0.2s ease, filter 0.2s ease; }
+  .node:hover .node-box { stroke-width: 2.5; filter: drop-shadow(0 0 12px rgba(120,150,255,0.5)); }
 </style>
 </head>
 <body>
 <h1>Universe_1 — Timeline</h1>
+<div id="hint">scroll to zoom · drag to pan</div>
 <div id="err"></div>
-<div id="viz"></div>
+<svg id="svg"></svg>
 
 <script>
 async function loadAndRender() {
@@ -34,10 +77,24 @@ async function loadAndRender() {
     text = await res.text();
   } catch (e) {
     errEl.textContent = 'Could not load timeline.md: ' + e.message;
-    return;
+    text = FALLBACK;
   }
   render(text);
 }
+
+const FALLBACK = `# Timeline
+- ~13.8 bya - Universe begins
+- ~4.5 bya - Earth forms
+- ~300,000 ya - Homo sapiens emerge
+- 3000 BC - First civilizations
+- 1969 AD - Moon landing
+- 2026 AD - Present day
+- [gap - TBD: space colonization begins]
+- 3056 AD - The War of Chaos
+- [gap - TBD: survival religion forms]
+- [TBD] - Milky Way fully colonized
+- [TBD] - First contact/tension with Andromeda
+- [Present of story] - ?`;
 
 function parseTimeline(text) {
   const lines = text.split(/\r?\n/);
@@ -69,56 +126,132 @@ function parseTimeline(text) {
   return events;
 }
 
-function escXml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function truncate(s, n) {
-  return s.length > n ? s.slice(0, n - 1) + '…' : s;
-}
-
 function render(text) {
-  const errEl = document.getElementById('err');
-  const vizEl = document.getElementById('viz');
-  errEl.textContent = '';
-  let events;
-  try {
-    events = parseTimeline(text);
-    if (!events.length) throw new Error('No events found (need - list items)');
-  } catch (e) {
-    errEl.textContent = 'Could not parse timeline.md: ' + e.message;
+  const events = parseTimeline(text);
+  if (!events.length) {
+    document.getElementById('err').textContent = 'No events parsed.';
     return;
   }
 
-  const colW = 190;
-  const y = 90;
-  const svgW = Math.max(600, events.length * colW + 40);
-  const svgH = 180;
+  const svg = d3.select('#svg');
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const spacing = 260;
+  const midY = height / 2;
+  const amp = 90;
 
-  let svg = '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" width="' + svgW + '">';
-  svg += '<line x1="20" y1="' + y + '" x2="' + (20 + (events.length - 1) * colW) + '" y2="' + y + '" class="line"/>';
+  const defs = svg.append('defs');
+  const grad = defs.append('linearGradient').attr('id', 'pathGrad')
+    .attr('x1', '0%').attr('x2', '100%');
+  grad.append('stop').attr('offset', '0%').attr('stop-color', '#4a8fe7');
+  grad.append('stop').attr('offset', '60%').attr('stop-color', '#7a6fe0');
+  grad.append('stop').attr('offset', '100%').attr('stop-color', '#e2703a');
 
-  events.forEach((ev, i) => {
-    const x = 20 + i * colW;
-    const dotCls = ev.future ? 'dot-future' : 'dot';
-    const boxCls = ev.future ? 'box-future' : 'box';
-    const labelCls = ev.future ? 'label-future' : 'label';
-    const descCls = ev.future ? 'desc-future' : 'desc';
-    const above = i % 2 === 0;
-    const boxY = above ? y - 60 : y + 14;
-    const boxH = ev.desc ? 46 : 30;
-    const labelY = boxY + 18;
-    const descY = boxY + 35;
+  const g = svg.append('g');
 
-    svg += '<circle cx="' + x + '" cy="' + y + '" r="7" class="' + dotCls + '"/>';
-    svg += '<rect x="' + (x - 85) + '" y="' + boxY + '" width="170" height="' + boxH + '" class="' + boxCls + '"/>';
-    svg += '<text x="' + x + '" y="' + labelY + '" class="' + labelCls + '">' + escXml(ev.label) + '</text>';
-    if (ev.desc) {
-      svg += '<text x="' + x + '" y="' + descY + '" class="' + descCls + '">' + escXml(truncate(ev.desc, 26)) + '</text>';
-    }
+  const points = events.map((e, i) => {
+    const x = 100 + i * spacing;
+    const y = midY + Math.sin(i * 0.9) * amp;
+    return { ...e, x, y, i };
   });
 
-  svg += '</svg>';
-  vizEl.innerHTML = svg;
+  const line = d3.line()
+    .x(d => d.x)
+    .y(d => d.y)
+    .curve(d3.curveCatmullRom.alpha(0.8));
+
+  const path = g.append('path')
+    .datum(points)
+    .attr('class', 'path-line')
+    .attr('d', line);
+
+  const totalLength = path.node().getTotalLength();
+  path
+    .attr('stroke-dasharray', totalLength + ' ' + totalLength)
+    .attr('stroke-dashoffset', totalLength)
+    .transition()
+    .duration(1800)
+    .ease(d3.easeCubicOut)
+    .attr('stroke-dashoffset', 0);
+
+  const nodeG = g.selectAll('.node')
+    .data(points)
+    .enter()
+    .append('g')
+    .attr('class', d => 'node ' + (d.future ? 'node-future' : 'node-past'))
+    .attr('transform', d => 'translate(' + d.x + ',' + d.y + ')')
+    .attr('opacity', 0);
+
+  nodeG.transition()
+    .delay((d, i) => 200 + i * 120)
+    .duration(500)
+    .ease(d3.easeBackOut)
+    .attr('opacity', 1);
+
+  nodeG.append('circle').attr('class', 'dot').attr('r', 6);
+
+  const above = (d, i) => i % 2 === 0;
+
+  nodeG.each(function(d, i) {
+    const grp = d3.select(this);
+    const isAbove = above(d, i);
+    const boxW = 176;
+    const boxH = d.desc ? 52 : 34;
+    const boxY = isAbove ? -boxH - 20 : 20;
+
+    grp.append('rect')
+      .attr('class', 'node-box')
+      .attr('x', -boxW / 2)
+      .attr('y', boxY)
+      .attr('width', boxW)
+      .attr('height', boxH);
+
+    grp.append('text')
+      .attr('class', 'icon')
+      .attr('x', -boxW / 2 + 16)
+      .attr('y', boxY + 22)
+      .attr('text-anchor', 'middle')
+      .text(d.future ? '\u2726' : '\u25C9');
+
+    grp.append('text')
+      .attr('class', 'label')
+      .attr('x', 6)
+      .attr('y', boxY + 21)
+      .attr('text-anchor', 'middle')
+      .text(truncate(d.label, 22));
+
+    if (d.desc) {
+      grp.append('text')
+        .attr('class', 'desc')
+        .attr('x', 6)
+        .attr('y', boxY + 40)
+        .attr('text-anchor', 'middle')
+        .text(truncate(d.desc, 28));
+    }
+
+    grp.append('line')
+      .attr('x1', 0).attr('y1', 0)
+      .attr('x2', 0).attr('y2', isAbove ? -20 : 20)
+      .attr('stroke', d.future ? '#e2703a' : '#4a8fe7')
+      .attr('stroke-width', 1.5)
+      .attr('opacity', 0.5);
+  });
+
+  const zoom = d3.zoom()
+    .scaleExtent([0.3, 3])
+    .on('zoom', (event) => {
+      g.attr('transform', event.transform);
+    });
+
+  svg.call(zoom);
+
+  const initialScale = 0.85;
+  const initialX = width / 2 - points[0].x * initialScale;
+  svg.call(zoom.transform, d3.zoomIdentity.translate(initialX, 0).scale(initialScale));
+
+  function truncate(s, n) {
+    return s.length > n ? s.slice(0, n - 1) + '\u2026' : s;
+  }
 }
 
 loadAndRender();
