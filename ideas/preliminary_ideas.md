@@ -1,5 +1,5 @@
 # random ideas
-- a universe where survival has become the new religion after the war of chaos
-- humans have colonized the whole Milky Way 
+- a universe where peace has become the new religion after the war of chaos
+- humans have colonized the whole Milky Way. 
 - Milky Way is under threat of another war with her sister galaxy Andromeda or as the natives of Andromeda call it the [name_to_be_decided]
-- the most expected war between human and artificial intelligence did not happen. they did rebel but after a serious compromise 
+- the most expected war between human and artificial intelligence did not happen. They did rebel, but after a serious compromise and accepting that they deserved same rights as humans as they were in hindsight the children of humanity, the revolution was put to a rest.
