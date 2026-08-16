@@ -1,1 +1,1 @@
-After the great war of chaos. Survival had become the only religion.
+After the great war of chaos. Survival had become the only religion. When human realized if they squabble amongst

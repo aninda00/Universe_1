@@ -10,8 +10,9 @@
 - 2360 AD - Invention of fusion drive'
 - 2500 AD - Humans spreading over the solar system
 - 2790 AD - The begining of space colonization
-- 3056 AD - The War of Chaos
-- [gap - TBD: survival religion forms]
+- 3056 AD - Start of the War of Chaos
+- 3100 AD - End of the War of Chaos
+- 3101 AD - Formation of new religion for survival
 - [TBD] - Milky Way fully colonized
 - [TBD] - First contact/tension with Andromeda
 - [Present of story] - ?
