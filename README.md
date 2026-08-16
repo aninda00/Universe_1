@@ -13,10 +13,10 @@
 
 ## Navigation
 
-- [Read Chapters](book_1/)
-- [Characters](characters/)
-- [Worlds](worlds/)
-- [Lore](lores/)
-- [Items](items/)
-- [Technology](technologies/)
-- [Timeline](timeline/timeline.html)
+- [Read Chapters](Book_1/)
+- [Characters](Characters/)
+- [Worlds](Worlds/)
+- [Lore](Lores/)
+- [Items](Items/)
+- [Technology](Technologies/)
+- [Timeline](Timeline/timeline.html)
