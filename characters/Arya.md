@@ -2,7 +2,7 @@
 
 ## Overview
 - **Species/Origin**: Crysinthian (see lore/crysinthians.md)
-- **Age**: 
+- **Age**: 12
 - **Role**: 
 
 ## Appearance
