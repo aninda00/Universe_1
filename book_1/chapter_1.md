@@ -1,0 +1,1 @@
+Arya and Mira lived in a world called crysinthia revolving around the star called Asorita. Both of them lived with their grandparents. 

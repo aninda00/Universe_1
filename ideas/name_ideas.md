@@ -3,3 +3,6 @@
 - volswagner
 - volinger
 - mechanized armor for reconnaissance and void encounter
+## characters
+- arya
+- mira

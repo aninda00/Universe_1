@@ -1,2 +1,2 @@
 # Universe_1
-This is an attempt of creating an universe.
+This is an attempt of creating a universe.
