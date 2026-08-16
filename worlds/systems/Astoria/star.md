@@ -1,2 +1,0 @@
-# Astoria
-## blue Giant
