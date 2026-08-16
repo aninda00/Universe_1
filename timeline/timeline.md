@@ -7,7 +7,8 @@
 - 1969 AD - Moon landing
 - 2026 AD - Present day
 - 2175 AD - The machine revolution
-- 2460 AD - Invention of fusion drive
+- 2360 AD - Invention of fusion drive'
+- 2500 AD - Humans spreading over the solar system
 - 2790 AD - The begining of space colonization
 - 3056 AD - The War of Chaos
 - [gap - TBD: survival religion forms]

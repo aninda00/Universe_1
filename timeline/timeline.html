@@ -6,13 +6,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <style>
   * { box-sizing: border-box; }
-  body {
+  html, body {
     font-family: -apple-system, "Segoe UI", sans-serif;
     background: radial-gradient(ellipse at 50% 0%, #14192b 0%, #0a0c14 60%);
     color: #e8ecf7;
     margin: 0;
     overflow: hidden;
     height: 100vh;
+    width: 100vw;
   }
   h1 {
     position: absolute;
@@ -39,27 +40,24 @@
   svg:active { cursor: grabbing; }
 
   .node-box {
-    fill: rgba(20, 26, 46, 0.92);
+    fill: rgba(20, 26, 46, 0.94);
+    stroke: #7a8fe0;
     stroke-width: 1.5;
-    rx: 10;
+    rx: 12;
   }
-  .node-box { stroke: #7a8fe0; }
-  .dot { fill: #7a8fe0; filter: drop-shadow(0 0 6px #7a8fe0aa); }
-  .label { fill: #cdd7ff; }
-  .desc { fill: #7f8bb5; }
-  .label { font-size: 13px; font-weight: 600; }
-  .desc { font-size: 11px; }
-  .icon { font-size: 15px; }
-  .path-line { fill: none; stroke: url(#pathGrad); stroke-width: 2.5; opacity: 0.7; }
+  .dot { fill: #7a8fe0; filter: drop-shadow(0 0 7px #7a8fe0cc); }
+  .label { fill: #cdd7ff; font-size: 16px; font-weight: 600; }
+  .desc { fill: #8b96c2; font-size: 13px; }
+  .path-line { fill: none; stroke: url(#pathGrad); stroke-width: 2.5; opacity: 0.75; }
 
   .node { cursor: pointer; }
   .node .node-box { transition: stroke-width 0.2s ease, filter 0.2s ease; }
-  .node:hover .node-box { stroke-width: 2.5; filter: drop-shadow(0 0 12px rgba(120,150,255,0.5)); }
+  .node:hover .node-box { stroke-width: 2.5; filter: drop-shadow(0 0 14px rgba(122,143,224,0.55)); }
 </style>
 </head>
 <body>
 <h1>Universe_1 — Timeline</h1>
-<div id="hint">scroll to zoom · drag to pan</div>
+<div id="hint">scroll to move · ctrl+scroll to zoom</div>
 <div id="err"></div>
 <svg id="svg"></svg>
 
@@ -100,12 +98,11 @@ function parseTimeline(text) {
     const item = line.match(/^-\s+(.*)/);
     if (!item) continue;
     const content = item[1];
-    let label, desc, future = false;
+    let label, desc;
     const dash = content.indexOf(' - ');
     if (content.startsWith('[') && content.includes(']')) {
       label = content.match(/\[(.*?)\]/)[1];
       desc = content.slice(content.indexOf(']') + 1).replace(/^\s*-\s*/, '').trim();
-      future = true;
     } else if (dash > -1) {
       label = content.slice(0, dash).trim();
       desc = content.slice(dash + 3).trim();
@@ -113,13 +110,38 @@ function parseTimeline(text) {
       label = content;
       desc = '';
     }
-    if (/AD\b/.test(label)) {
-      const yr = parseInt(label);
-      if (!isNaN(yr) && yr > 2026) future = true;
-    }
-    events.push({ label, desc, future });
+    events.push({ label, desc });
   }
   return events;
+}
+
+// wrap a string into lines that fit maxWidth, using a hidden canvas to measure text
+let measureCtx = null;
+function getMeasureCtx(font) {
+  if (!measureCtx) {
+    const canvas = document.createElement('canvas');
+    measureCtx = canvas.getContext('2d');
+  }
+  measureCtx.font = font;
+  return measureCtx;
+}
+
+function wrapText(str, maxWidth, font) {
+  const ctx = getMeasureCtx(font);
+  const words = str.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = '';
+  for (const word of words) {
+    const test = current ? current + ' ' + word : word;
+    if (ctx.measureText(test).width > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = test;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
 }
 
 function render(text) {
@@ -132,29 +154,56 @@ function render(text) {
   const svg = d3.select('#svg');
   const width = window.innerWidth;
   const height = window.innerHeight;
-  const spacing = 260;
-  const midY = height / 2;
-  const amp = 90;
+  const spacing = 230;
+  const midX = width / 2;
+  const amp = 160;
+  const topPad = 120;
+
+  const boxW = 260;
+  const padX = 18;
+  const textMaxWidth = boxW - padX * 2;
+  const labelFont = '600 16px -apple-system, "Segoe UI", sans-serif';
+  const descFont = '400 13px -apple-system, "Segoe UI", sans-serif';
+  const labelLineH = 21;
+  const descLineH = 18;
 
   const defs = svg.append('defs');
   const grad = defs.append('linearGradient').attr('id', 'pathGrad')
-    .attr('x1', '0%').attr('x2', '100%');
+    .attr('x1', '0%').attr('y1', '0%').attr('x2', '0%').attr('y2', '100%');
   grad.append('stop').attr('offset', '0%').attr('stop-color', '#4a8fe7');
-  grad.append('stop').attr('offset', '60%').attr('stop-color', '#7a6fe0');
-  grad.append('stop').attr('offset', '100%').attr('stop-color', '#e2703a');
+  grad.append('stop').attr('offset', '50%').attr('stop-color', '#7a6fe0');
+  grad.append('stop').attr('offset', '100%').attr('stop-color', '#9d6fe0');
 
   const g = svg.append('g');
 
-  const points = events.map((e, i) => {
-    const x = 100 + i * spacing;
-    const y = midY + Math.sin(i * 0.9) * amp;
+  // precompute wrapped lines and box height per event
+  const prepared = events.map((e) => {
+    const labelLines = wrapText(e.label, textMaxWidth, labelFont);
+    const descLines = e.desc ? wrapText(e.desc, textMaxWidth, descFont) : [];
+    const topPadIn = 18;
+    const gapBetween = e.desc ? 8 : 0;
+    const bottomPadIn = 16;
+    const boxH = topPadIn
+      + labelLines.length * labelLineH
+      + gapBetween
+      + descLines.length * descLineH
+      + bottomPadIn;
+    return { ...e, labelLines, descLines, boxH };
+  });
+
+  // vertical progression with cumulative spacing based on box height
+  let cursorY = topPad;
+  const points = prepared.map((e, i) => {
+    const y = cursorY;
+    const x = midX + Math.sin(i * 1.3) * amp + Math.sin(i * 0.5) * (amp * 0.4);
+    cursorY += Math.max(spacing, e.boxH + 90);
     return { ...e, x, y, i };
   });
 
   const line = d3.line()
     .x(d => d.x)
     .y(d => d.y)
-    .curve(d3.curveCatmullRom.alpha(0.8));
+    .curve(d3.curveCatmullRom.alpha(0.9));
 
   const path = g.append('path')
     .datum(points)
@@ -166,7 +215,7 @@ function render(text) {
     .attr('stroke-dasharray', totalLength + ' ' + totalLength)
     .attr('stroke-dashoffset', totalLength)
     .transition()
-    .duration(1800)
+    .duration(2200)
     .ease(d3.easeCubicOut)
     .attr('stroke-dashoffset', 0);
 
@@ -174,80 +223,96 @@ function render(text) {
     .data(points)
     .enter()
     .append('g')
-    .attr('class', d => 'node ' + (d.future ? 'node-future' : 'node-past'))
+    .attr('class', 'node')
     .attr('transform', d => 'translate(' + d.x + ',' + d.y + ')')
     .attr('opacity', 0);
 
   nodeG.transition()
-    .delay((d, i) => 200 + i * 120)
+    .delay((d, i) => 200 + i * 140)
     .duration(500)
     .ease(d3.easeBackOut)
     .attr('opacity', 1);
 
   nodeG.append('circle').attr('class', 'dot').attr('r', 6);
 
-  const above = (d, i) => i % 2 === 0;
+  const rightSide = (d, i) => i % 2 === 0;
 
   nodeG.each(function(d, i) {
     const grp = d3.select(this);
-    const isAbove = above(d, i);
-    const boxW = 176;
-    const boxH = d.desc ? 52 : 34;
-    const boxY = isAbove ? -boxH - 20 : 20;
+    const onRight = rightSide(d, i);
+    const boxH = d.boxH;
+    const gap = 26;
+    const boxX = onRight ? gap : -gap - boxW;
+    const boxY = -boxH / 2;
 
     grp.append('rect')
       .attr('class', 'node-box')
-      .attr('x', -boxW / 2)
+      .attr('x', boxX)
       .attr('y', boxY)
       .attr('width', boxW)
       .attr('height', boxH);
 
-    grp.append('text')
-      .attr('class', 'icon')
-      .attr('x', -boxW / 2 + 16)
-      .attr('y', boxY + 22)
-      .attr('text-anchor', 'middle')
-      .text(d.future ? '\u2726' : '\u25C9');
+    const textX = boxX + boxW / 2;
+    let cy = boxY + 18 + labelLineH * 0.7;
 
-    grp.append('text')
-      .attr('class', 'label')
-      .attr('x', 6)
-      .attr('y', boxY + 21)
-      .attr('text-anchor', 'middle')
-      .text(truncate(d.label, 22));
-
-    if (d.desc) {
+    d.labelLines.forEach((ln) => {
       grp.append('text')
-        .attr('class', 'desc')
-        .attr('x', 6)
-        .attr('y', boxY + 40)
+        .attr('class', 'label')
+        .attr('x', textX)
+        .attr('y', cy)
         .attr('text-anchor', 'middle')
-        .text(truncate(d.desc, 28));
+        .text(ln);
+      cy += labelLineH;
+    });
+
+    if (d.descLines.length) {
+      cy += 4;
+      d.descLines.forEach((ln) => {
+        grp.append('text')
+          .attr('class', 'desc')
+          .attr('x', textX)
+          .attr('y', cy)
+          .attr('text-anchor', 'middle')
+          .text(ln);
+        cy += descLineH;
+      });
     }
 
     grp.append('line')
       .attr('x1', 0).attr('y1', 0)
-      .attr('x2', 0).attr('y2', isAbove ? -20 : 20)
-      .attr('stroke', d.future ? '#e2703a' : '#4a8fe7')
+      .attr('x2', onRight ? gap : -gap).attr('y2', 0)
+      .attr('stroke', '#7a8fe0')
       .attr('stroke-width', 1.5)
       .attr('opacity', 0.5);
   });
 
-  const zoom = d3.zoom()
+  let transform = d3.zoomIdentity;
+  const initialScale = 0.95;
+  transform = d3.zoomIdentity
+    .translate(width / 2 - midX * initialScale, 60)
+    .scale(initialScale);
+  g.attr('transform', transform);
+
+  const zoomBehavior = d3.zoom()
     .scaleExtent([0.3, 3])
+    .filter((event) => {
+      if (event.type === 'wheel') return event.ctrlKey || event.metaKey;
+      return !event.button;
+    })
     .on('zoom', (event) => {
-      g.attr('transform', event.transform);
+      transform = event.transform;
+      g.attr('transform', transform);
     });
 
-  svg.call(zoom);
+  svg.call(zoomBehavior);
+  svg.call(zoomBehavior.transform, transform);
 
-  const initialScale = 0.85;
-  const initialX = width / 2 - points[0].x * initialScale;
-  svg.call(zoom.transform, d3.zoomIdentity.translate(initialX, 0).scale(initialScale));
-
-  function truncate(s, n) {
-    return s.length > n ? s.slice(0, n - 1) + '\u2026' : s;
-  }
+  svg.on('wheel', function(event) {
+    if (event.ctrlKey || event.metaKey) return;
+    event.preventDefault();
+    transform = transform.translate(-event.deltaX / transform.k, -event.deltaY / transform.k);
+    svg.call(zoomBehavior.transform, transform);
+  }, { passive: false });
 }
 
 loadAndRender();
