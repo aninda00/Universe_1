@@ -11,9 +11,10 @@
 - 2375 AD - Invention of exo-suits [M.A.R.V.E.]
 - 2500 AD - Humans spreading over the solar system
 - 2790 AD - The beginning of space colonization
-- 2956 AD - Start of the War of Chaos
-- 3100 AD - End of the War of Chaos
-- 3101 AD - Formation of new religion for survival
+- 2956 AD - Start of the War of Chaos #war !5
+- 3100 AD - End of the War of Chaos #war !5
+- 3101 AD - Formation of new religion #religion !4
+- 3101 AD - Formation of Peace Corps
 - [TBD] - Milky Way fully colonized
 - [TBD] - First contact/tension with Andromeda
-- [Present of story] - ?
+- 3500 - Birth of arya

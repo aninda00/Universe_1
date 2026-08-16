@@ -53,6 +53,8 @@
   .node { cursor: pointer; }
   .node .node-box { transition: stroke-width 0.2s ease, filter 0.2s ease; }
   .node:hover .node-box { stroke-width: 2.5; filter: drop-shadow(0 0 14px rgba(122,143,224,0.55)); }
+
+  .branch-line { stroke: #7a8fe0; stroke-width: 1.5; opacity: 0.5; fill: none; }
 </style>
 </head>
 <body>
@@ -84,8 +86,9 @@ const FALLBACK = `# Timeline
 - 1969 AD - Moon landing
 - 2026 AD - Present day
 - [gap - TBD: space colonization begins]
+- 3101 AD - Formation of new religion
+- 3101 AD - Formation of Peace Corps
 - 3056 AD - The War of Chaos
-- [gap - TBD: survival religion forms]
 - [TBD] - Milky Way fully colonized
 - [TBD] - First contact/tension with Andromeda
 - [Present of story] - ?`;
@@ -166,6 +169,8 @@ function render(text) {
   const descFont = '400 13px -apple-system, "Segoe UI", sans-serif';
   const labelLineH = 21;
   const descLineH = 18;
+  const gap = 26;       // dot -> box horizontal gap
+  const stackGap = 20;  // vertical gap between stacked boxes on same side
 
   const defs = svg.append('defs');
   const grad = defs.append('linearGradient').attr('id', 'pathGrad')
@@ -191,13 +196,35 @@ function render(text) {
     return { ...e, labelLines, descLines, boxH };
   });
 
-  // vertical progression with cumulative spacing based on box height
+  // --- group events that share the same time label (same point on the timeline) ---
+  const groups = [];
+  const groupIndex = new Map();
+  prepared.forEach((e) => {
+    if (!groupIndex.has(e.label)) {
+      groupIndex.set(e.label, groups.length);
+      groups.push({ label: e.label, events: [] });
+    }
+    groups[groupIndex.get(e.label)].events.push(e);
+  });
+
+  // split each group's events across left/right sides, alternating
+  function stackHeight(arr) {
+    if (!arr.length) return 0;
+    return arr.reduce((s, e) => s + e.boxH, 0) + stackGap * (arr.length - 1);
+  }
+
+  const groupPoints = [];
   let cursorY = topPad;
-  const points = prepared.map((e, i) => {
+  groups.forEach((grp, gi) => {
+    const right = [], left = [];
+    grp.events.forEach((e, j) => (j % 2 === 0 ? right : left).push(e));
+    const rightH = stackHeight(right);
+    const leftH = stackHeight(left);
+    const maxH = Math.max(rightH, leftH, 40);
+    const x = midX + Math.sin(gi * 1.3) * amp + Math.sin(gi * 0.5) * (amp * 0.4);
     const y = cursorY;
-    const x = midX + Math.sin(i * 1.3) * amp + Math.sin(i * 0.5) * (amp * 0.4);
-    cursorY += Math.max(spacing, e.boxH + 90);
-    return { ...e, x, y, i };
+    cursorY += Math.max(spacing, maxH + 90);
+    groupPoints.push({ label: grp.label, x, y, right, left, rightH, leftH, i: gi });
   });
 
   const line = d3.line()
@@ -206,7 +233,7 @@ function render(text) {
     .curve(d3.curveCatmullRom.alpha(0.9));
 
   const path = g.append('path')
-    .datum(points)
+    .datum(groupPoints)
     .attr('class', 'path-line')
     .attr('d', line);
 
@@ -220,7 +247,7 @@ function render(text) {
     .attr('stroke-dashoffset', 0);
 
   const nodeG = g.selectAll('.node')
-    .data(points)
+    .data(groupPoints)
     .enter()
     .append('g')
     .attr('class', 'node')
@@ -235,27 +262,18 @@ function render(text) {
 
   nodeG.append('circle').attr('class', 'dot').attr('r', 6);
 
-  const rightSide = (d, i) => i % 2 === 0;
-
-  nodeG.each(function(d, i) {
-    const grp = d3.select(this);
-    const onRight = rightSide(d, i);
-    const boxH = d.boxH;
-    const gap = 26;
-    const boxX = onRight ? gap : -gap - boxW;
-    const boxY = -boxH / 2;
-
+  function drawBox(grp, e, boxX, boxCenterY) {
+    const boxY = boxCenterY - e.boxH / 2;
     grp.append('rect')
       .attr('class', 'node-box')
       .attr('x', boxX)
       .attr('y', boxY)
       .attr('width', boxW)
-      .attr('height', boxH);
+      .attr('height', e.boxH);
 
     const textX = boxX + boxW / 2;
     let cy = boxY + 18 + labelLineH * 0.7;
-
-    d.labelLines.forEach((ln) => {
+    e.labelLines.forEach((ln) => {
       grp.append('text')
         .attr('class', 'label')
         .attr('x', textX)
@@ -264,10 +282,9 @@ function render(text) {
         .text(ln);
       cy += labelLineH;
     });
-
-    if (d.descLines.length) {
+    if (e.descLines.length) {
       cy += 4;
-      d.descLines.forEach((ln) => {
+      e.descLines.forEach((ln) => {
         grp.append('text')
           .attr('class', 'desc')
           .attr('x', textX)
@@ -277,13 +294,34 @@ function render(text) {
         cy += descLineH;
       });
     }
+  }
 
-    grp.append('line')
-      .attr('x1', 0).attr('y1', 0)
-      .attr('x2', onRight ? gap : -gap).attr('y2', 0)
-      .attr('stroke', '#7a8fe0')
-      .attr('stroke-width', 1.5)
-      .attr('opacity', 0.5);
+  nodeG.each(function (d) {
+    const grp = d3.select(this);
+
+    // right stack
+    let cy = -d.rightH / 2;
+    d.right.forEach((e) => {
+      const centerY = cy + e.boxH / 2;
+      const boxX = gap;
+      grp.append('path')
+        .attr('class', 'branch-line')
+        .attr('d', `M0,0 L${gap - 8},${centerY} L${boxX},${centerY}`);
+      drawBox(grp, e, boxX, centerY);
+      cy += e.boxH + stackGap;
+    });
+
+    // left stack
+    cy = -d.leftH / 2;
+    d.left.forEach((e) => {
+      const centerY = cy + e.boxH / 2;
+      const boxX = -gap - boxW;
+      grp.append('path')
+        .attr('class', 'branch-line')
+        .attr('d', `M0,0 L${-gap + 8},${centerY} L${boxX + boxW},${centerY}`);
+      drawBox(grp, e, boxX, centerY);
+      cy += e.boxH + stackGap;
+    });
   });
 
   let transform = d3.zoomIdentity;
