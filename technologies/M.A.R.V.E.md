@@ -1,4 +1,4 @@
-# [Name TBD] — Personal Flight Exosuit
+# M.A.R.V.E [Mechanized Armor for Recon and Void Encounter] — Personal Flight Exosuit
 
 ## Deployment
 Stored as a compact handheld container/controller. Triggered, it unfolds
