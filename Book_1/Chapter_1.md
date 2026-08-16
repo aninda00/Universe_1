@@ -1,1 +1,3 @@
-Arya and Mira lived in a world called crysinthia revolving around the star called Asorita. Both of them lived with their grandparents. Their parents worked on the peace corps. 
+Arya and Mira lived in a world called crysinthia revolving around the star called Asorita. Both of them lived with their grandparents. Their parents worked on the peace corps. They have always hated the peace corp. Because of it they could not spend enough time with their parents. Still Mira did not complain much. She understood the importance of peace. It was Arya who always complained to their grandmother.
+"Why is peace so important?", sometimes she shouted at grandmother. Why couldn't she get to spend time with her father and mother for stupid peace. 
+Her grandmother would instantly gasp and put her hand on her mouth and scold her,"Don't you dare missy, don't you dare say these nonsenses again."

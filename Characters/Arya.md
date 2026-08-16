@@ -16,7 +16,8 @@
 - 
 
 ## Personality
-- 
+- Fighter
+- Always gets into trouble
 
 ## Relationships
 - 

@@ -8,12 +8,16 @@
 ## Appearance
 - brown eyes
 
+## Weapon of choice
+- none
+
 ## Background
 - Parents work as off-world peacekeepers
 - 
 
 ## Personality
-- 
+- Peaceful
+- Loves to read
 
 ## Relationships
 - 
