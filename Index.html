@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Universe_1 — Control Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05070b;
+    --panel: #0b0e16;
+    --panel-border: #1c2436;
+    --blue: #4a8fe7;
+    --blue-dim: #2c4a75;
+    --orange: #ff8a3d;
+    --orange-dim: #a85c28;
+    --text: #dbe2f0;
+    --text-dim: #57617c;
+    --mono: 'Share Tech Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    grid-template-rows: 52px 1fr;
+    height: 100vh;
+  }
+
+  header {
+    grid-column: 1 / 3;
+    background: var(--panel);
+    border-bottom: 1px solid var(--panel-border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px;
+    font-family: var(--mono);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 14px; letter-spacing: 0.12em; }
+  .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 8px var(--orange); animation: blink 2.4s ease-in-out infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .status-row { display: flex; gap: 22px; font-size: 11px; color: var(--text-dim); }
+  .status-row span b { color: var(--blue); font-weight: 400; }
+
+  .sidebar {
+    background: var(--panel);
+    border-right: 1px solid var(--panel-border);
+    display: flex; flex-direction: column; align-items: center; padding: 16px 0; gap: 8px;
+  }
+  .view-btn {
+    width: 44px; height: 44px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid transparent;
+    color: var(--text-dim); font-family: var(--mono); font-size: 8px; letter-spacing: 0.03em;
+    cursor: pointer; border-radius: 3px; transition: all 0.2s ease; line-height: 1.2;
+  }
+  .view-btn .num { font-size: 15px; font-weight: 400; }
+  .view-btn:hover, .view-btn.active { color: var(--orange); border-color: var(--orange-dim); background: rgba(255,138,61,0.07); }
+
+  .main { position: relative; overflow: hidden; }
+  .view { display: none; height: 100%; }
+  .view.active { display: flex; }
+  .view.stack { flex-direction: column; }
+
+  .panel { background: var(--panel); border: 1px solid var(--panel-border); display: flex; flex-direction: column; min-height: 0; min-width: 0; flex: 1; position: relative; }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px; border-bottom: 1px solid var(--panel-border);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; flex-shrink: 0;
+  }
+  .panel-head .id { color: var(--text-dim); }
+  .panel-title { color: var(--blue); }
+  .panel.orange .panel-title { color: var(--orange); }
+  .panel-body { flex: 1; min-height: 0; overflow: auto; position: relative; }
+  .panel-body::-webkit-scrollbar { width: 6px; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--panel-border); }
+
+  #timeline-iframe { width: 100%; height: 100%; border: none; display: block; }
+
+  .breadcrumb {
+    display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+    padding: 8px 12px; border-bottom: 1px solid var(--panel-border);
+    font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+  }
+  .breadcrumb span.seg { cursor: pointer; color: var(--blue); }
+  .breadcrumb span.seg:hover { text-decoration: underline; }
+  .breadcrumb span.sep { color: var(--text-dim); }
+
+  .file-list { padding: 6px; }
+  .entry {
+    padding: 9px 12px; margin-bottom: 4px;
+    background: rgba(74,143,231,0.04); border: 1px solid var(--panel-border); border-radius: 2px;
+    cursor: pointer; transition: all 0.15s ease;
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 12px;
+  }
+  .entry:hover { border-color: var(--blue-dim); background: rgba(74,143,231,0.09); }
+  .entry.dir .icon { color: var(--orange); }
+  .entry.file .icon { color: var(--blue); }
+  .entry .name { color: var(--text); }
+
+  .file-view { display: flex; height: 100%; min-height: 0; }
+  .file-view.stacked { flex-direction: column; }
+  .md-pane, .svg-pane { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: 16px; }
+  .svg-pane { border-left: 1px solid var(--panel-border); display: flex; align-items: center; justify-content: center; background: rgba(255,138,61,0.02); }
+  .svg-pane img { max-width: 100%; max-height: 100%; }
+  .svg-unavailable { font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-align: center; }
+
+  .file-reader { font-size: 13px; line-height: 1.7; white-space: pre-wrap; color: var(--text); }
+  .file-reader h1, .file-reader h2 { color: var(--orange); font-family: var(--mono); font-size: 13px; margin: 10px 0 4px; }
+  .back-btn {
+    font-family: var(--mono); font-size: 10px; color: var(--blue);
+    background: none; border: 1px solid var(--blue-dim); padding: 5px 10px; cursor: pointer; margin: 10px 12px; border-radius: 2px;
+  }
+  .loading, .empty-msg { padding: 20px; font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <header>
+    <div class="brand"><span class="dot"></span> UNIVERSE_1 // BRIDGE CONSOLE</div>
+    <div class="status-row">
+      <span>SYS: <b>NOMINAL</b></span>
+      <span>ORIGIN: <b>ASTORIA</b></span>
+      <span id="clock">00:00:00</span>
+    </div>
+  </header>
+
+  <nav class="sidebar">
+    <button class="view-btn active" data-view="view-1"><span class="num">1</span>BOOK</button>
+    <button class="view-btn" data-view="view-2"><span class="num">2</span>TIME/<br>LORE</button>
+    <button class="view-btn" data-view="view-3"><span class="num">3</span>CREW/<br>WRLD</button>
+    <button class="view-btn" data-view="view-4"><span class="num">4</span>GEAR/<br>TECH</button>
+  </nav>
+
+  <div class="main">
+
+    <section class="view active" id="view-1">
+      <section class="panel" id="panel-book">
+        <div class="panel-head"><span class="panel-title">◈ Book_1</span><span class="id">SRC_01</span></div>
+        <div class="panel-body" id="body-book"><div class="loading">Loading…</div></div>
+      </section>
+    </section>
+
+    <section class="view" id="view-2">
+      <section class="panel">
+        <div class="panel-head"><span class="panel-title">◈ Timeline</span><span class="id">FEED_01</span></div>
+        <div class="panel-body"><iframe id="timeline-iframe" src="Timeline/timeline.html" title="Timeline"></iframe></div>
+      </section>
+      <section class="panel orange" id="panel-lore">
+        <div class="panel-head"><span class="panel-title">◈ Lore</span><span class="id">DB_02</span></div>
+        <div class="panel-body" id="body-lore"><div class="loading">Loading…</div></div>
+      </section>
+    </section>
+
+    <section class="view" id="view-3">
+      <section class="panel">
+        <div class="panel-head"><span class="panel-title">◈ Characters</span><span class="id">DB_03</span></div>
+        <div class="panel-body" id="body-characters"><div class="loading">Loading…</div></div>
+      </section>
+      <section class="panel orange">
+        <div class="panel-head"><span class="panel-title">◈ Worlds</span><span class="id">DB_04</span></div>
+        <div class="panel-body" id="body-worlds"><div class="loading">Loading…</div></div>
+      </section>
+    </section>
+
+    <section class="view stack" id="view-4">
+      <section class="panel">
+        <div class="panel-head"><span class="panel-title">◈ Items</span><span class="id">DB_05</span></div>
+        <div class="panel-body" id="body-items"><div class="loading">Loading…</div></div>
+      </section>
+      <section class="panel orange">
+        <div class="panel-head"><span class="panel-title">◈ Technologies</span><span class="id">DB_06</span></div>
+        <div class="panel-body" id="body-tech"><div class="loading">Loading…</div></div>
+      </section>
+    </section>
+
+  </div>
+</div>
+
+<script>
+  function tick() { document.getElementById('clock').textContent = new Date().toTimeString().slice(0, 8); }
+  tick(); setInterval(tick, 1000);
+
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.view).classList.add('active');
+    });
+  });
+
+  const REPO = 'aninda00/Universe_1';
+
+  async function fetchDir(path) {
+    const res = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + path);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+  function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function mdToHtml(md) {
+    return md.split('\n').map(line => {
+      if (line.startsWith('## ')) return '<h2>' + escapeHtml(line.slice(3)) + '</h2>';
+      if (line.startsWith('# ')) return '<h1>' + escapeHtml(line.slice(2)) + '</h1>';
+      return escapeHtml(line);
+    }).join('\n');
+  }
+
+  // real folder-tree browser: navigates one level at a time, breadcrumb trail,
+  // optional SVG schematic lookup for a clicked .md file (sibling file, same basename, .svg)
+  function createFolderBrowser(bodyEl, rootPath, opts) {
+    opts = opts || {};
+    let pathStack = [rootPath];
+    let currentEntries = [];
+
+    function currentPath() { return pathStack[pathStack.length - 1]; }
+
+    function renderBreadcrumb(container) {
+      const bc = document.createElement('div');
+      bc.className = 'breadcrumb';
+      pathStack.forEach((p, i) => {
+        const label = p.split('/').pop();
+        const seg = document.createElement('span');
+        seg.className = 'seg';
+        seg.textContent = label;
+        seg.addEventListener('click', () => { pathStack = pathStack.slice(0, i + 1); showList(); });
+        bc.appendChild(seg);
+        if (i < pathStack.length - 1) {
+          const sep = document.createElement('span');
+          sep.className = 'sep';
+          sep.textContent = ' / ';
+          bc.appendChild(sep);
+        }
+      });
+      container.appendChild(bc);
+    }
+
+    async function showList() {
+      bodyEl.innerHTML = '<div class="loading">Loading ' + currentPath() + '…</div>';
+      let entries;
+      try {
+        entries = await fetchDir(currentPath());
+      } catch (e) {
+        bodyEl.innerHTML = '';
+        const bcWrap = document.createElement('div');
+        renderBreadcrumb(bcWrap);
+        bodyEl.appendChild(bcWrap.firstChild);
+        bodyEl.insertAdjacentHTML('beforeend', '<div class="empty-msg">Could not load this folder (' + e.message + ').</div>');
+        return;
+      }
+      currentEntries = entries;
+      entries.sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      bodyEl.innerHTML = '';
+      renderBreadcrumb(bodyEl);
+
+      if (!entries.length) {
+        bodyEl.insertAdjacentHTML('beforeend', '<div class="empty-msg">Empty folder.</div>');
+        return;
+      }
+
+      const list = document.createElement('div');
+      list.className = 'file-list';
+      entries.forEach(entry => {
+        if (entry.type === 'dir') {
+          const item = document.createElement('div');
+          item.className = 'entry dir';
+          item.innerHTML = '<span class="icon">▸</span><span class="name">' + entry.name + '/</span>';
+          item.addEventListener('click', () => { pathStack.push(entry.path); showList(); });
+          list.appendChild(item);
+        } else if (entry.type === 'file' && entry.name.endsWith('.md')) {
+          const item = document.createElement('div');
+          item.className = 'entry file';
+          item.innerHTML = '<span class="icon">▪</span><span class="name">' + entry.name + '</span>';
+          item.addEventListener('click', () => showFile(entry));
+          list.appendChild(item);
+        }
+        // non-.md, non-dir entries (e.g. loose .svg files) are not listed directly —
+        // they're picked up automatically as schematics when their matching .md is opened
+      });
+      bodyEl.appendChild(list);
+    }
+
+    async function showFile(entry) {
+      bodyEl.innerHTML = '<div class="loading">Loading ' + entry.name + '…</div>';
+      let text = '';
+      try {
+        const res = await fetch(entry.download_url);
+        text = await res.text();
+      } catch (e) {
+        bodyEl.innerHTML = '<div class="empty-msg">Could not load file.</div>';
+        return;
+      }
+
+      bodyEl.innerHTML = '';
+      const back = document.createElement('button');
+      back.className = 'back-btn';
+      back.textContent = '← Back';
+      back.addEventListener('click', showList);
+      bodyEl.appendChild(back);
+
+      const fv = document.createElement('div');
+      fv.className = 'file-view' + (opts.stackedFileView ? ' stacked' : '');
+
+      const mdPane = document.createElement('div');
+      mdPane.className = 'md-pane file-reader';
+      mdPane.innerHTML = mdToHtml(text);
+      fv.appendChild(mdPane);
+
+      if (opts.svgLookup) {
+        const baseName = entry.name.replace(/\.md$/, '');
+        const svgEntry = currentEntries.find(e => e.type === 'file' && e.name === baseName + '.svg');
+        const svgPane = document.createElement('div');
+        svgPane.className = 'svg-pane';
+        if (svgEntry) {
+          svgPane.innerHTML = '<img src="' + svgEntry.download_url + '" alt="' + baseName + ' schematic">';
+        } else {
+          svgPane.innerHTML = '<div class="svg-unavailable">SCHEMATIC NOT AVAILABLE<br>(expected ' + baseName + '.svg in this folder)</div>';
+        }
+        fv.appendChild(svgPane);
+      }
+
+      bodyEl.appendChild(fv);
+    }
+
+    showList();
+  }
+
+  createFolderBrowser(document.getElementById('body-book'), 'Book_1');
+  createFolderBrowser(document.getElementById('body-lore'), 'Lores');
+  createFolderBrowser(document.getElementById('body-characters'), 'Characters');
+  createFolderBrowser(document.getElementById('body-worlds'), 'Worlds');
+  createFolderBrowser(document.getElementById('body-items'), 'Items', { svgLookup: true });
+  createFolderBrowser(document.getElementById('body-tech'), 'Technologies', { svgLookup: true });
+</script>
+
+</body>
+</html>

@@ -118,7 +118,6 @@ function parseTimeline(text) {
   return events;
 }
 
-// wrap a string into lines that fit maxWidth, using a hidden canvas to measure text
 let measureCtx = null;
 function getMeasureCtx(font) {
   if (!measureCtx) {
@@ -169,8 +168,8 @@ function render(text) {
   const descFont = '400 13px -apple-system, "Segoe UI", sans-serif';
   const labelLineH = 21;
   const descLineH = 18;
-  const gap = 26;       // dot -> box horizontal gap
-  const stackGap = 20;  // vertical gap between stacked boxes on same side
+  const gap = 26;
+  const stackGap = 20;
 
   const defs = svg.append('defs');
   const grad = defs.append('linearGradient').attr('id', 'pathGrad')
@@ -181,7 +180,6 @@ function render(text) {
 
   const g = svg.append('g');
 
-  // precompute wrapped lines and box height per event
   const prepared = events.map((e) => {
     const labelLines = wrapText(e.label, textMaxWidth, labelFont);
     const descLines = e.desc ? wrapText(e.desc, textMaxWidth, descFont) : [];
@@ -196,7 +194,6 @@ function render(text) {
     return { ...e, labelLines, descLines, boxH };
   });
 
-  // --- group events that share the same time label (same point on the timeline) ---
   const groups = [];
   const groupIndex = new Map();
   prepared.forEach((e) => {
@@ -207,7 +204,6 @@ function render(text) {
     groups[groupIndex.get(e.label)].events.push(e);
   });
 
-  // split each group's events across left/right sides, alternating
   function stackHeight(arr) {
     if (!arr.length) return 0;
     return arr.reduce((s, e) => s + e.boxH, 0) + stackGap * (arr.length - 1);
@@ -299,19 +295,19 @@ function render(text) {
   nodeG.each(function (d) {
     const grp = d3.select(this);
 
-    // right stack
     let cy = -d.rightH / 2;
     d.right.forEach((e) => {
       const centerY = cy + e.boxH / 2;
       const boxX = gap;
-      grp.append('path')
-        .attr('class', 'branch-line')
-        .attr('d', `M0,0 L${gap - 8},${centerY} L${boxX},${centerY}`);
+      if (d.right.length > 1 || d.left.length > 0) {
+        grp.append('path')
+          .attr('class', 'branch-line')
+          .attr('d', `M0,0 L${gap - 8},${centerY} L${boxX},${centerY}`);
+      }
       drawBox(grp, e, boxX, centerY);
       cy += e.boxH + stackGap;
     });
 
-    // left stack
     cy = -d.leftH / 2;
     d.left.forEach((e) => {
       const centerY = cy + e.boxH / 2;
@@ -332,7 +328,8 @@ function render(text) {
   g.attr('transform', transform);
 
   const zoomBehavior = d3.zoom()
-    .scaleExtent([0.3, 3])
+    .scaleExtent([0.15, 4])
+    .wheelDelta((event) => -event.deltaY * (event.deltaMode ? 0.05 : 0.002))
     .filter((event) => {
       if (event.type === 'wheel') return event.ctrlKey || event.metaKey;
       return !event.button;
