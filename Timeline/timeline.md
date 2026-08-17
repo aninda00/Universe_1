@@ -16,5 +16,4 @@
 - 3101 AD - Formation of new religion #religion !4
 - 3101 AD - Formation of Peace Corps
 - [TBD] - Milky Way fully colonized
-- [TBD] - First contact/tension with Andromeda
 - 3500 - Birth of arya

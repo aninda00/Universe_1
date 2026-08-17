@@ -20,7 +20,7 @@
 - Always gets into trouble
 
 ## Relationships
-- 
+- Twin sister to Mira
 
 ## Timeline / Key Appearances
 - 

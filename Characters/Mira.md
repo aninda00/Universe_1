@@ -20,7 +20,7 @@
 - Loves to read
 
 ## Relationships
-- 
+- Twin sister to Arya
 
 ## Timeline / Key Appearances
 - 
