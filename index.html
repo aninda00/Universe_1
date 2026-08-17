@@ -68,10 +68,10 @@
   .panel-head {
     display: flex; align-items: center; justify-content: space-between;
     padding: 8px 14px; border-bottom: 1px solid var(--panel-border);
-    font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; flex-shrink: 0;
+    font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; flex-shrink: 0;
   }
-  .panel-head .id { color: var(--text-dim); }
-  .panel-title { color: var(--blue); font-weight: 600; font-size: 16px; }
+  .panel-head .id { color: var(--text-dim); font-weight: 400; }
+  .panel-title { color: var(--blue); }
   .panel.orange .panel-title { color: var(--orange); }
   .panel-body { flex: 1; min-height: 0; overflow: auto; position: relative; }
   .panel-body::-webkit-scrollbar { width: 6px; }
@@ -103,11 +103,24 @@
 
   .file-view { display: flex; height: 100%; min-height: 0; }
   .file-view.stacked { flex-direction: column; }
-  .md-pane, .svg-pane { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: 16px; }
-  .md-pane::-webkit-scrollbar{ width: 6px; }
-  .svg-pane { border-left: 1px solid var(--panel-border); display: flex; align-items: center; justify-content: center; background: rgba(255,138,61,0.02); }
-  .svg-pane img { max-width: 100%; max-height: 100%; }
-  .svg-unavailable { font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-align: center; }
+  .md-pane { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: 16px; }
+  .md-pane::-webkit-scrollbar { width: 6px; }
+  .md-pane::-webkit-scrollbar-thumb { background: var(--panel-border); }
+  .svg-pane {
+    flex: 1; min-width: 0; min-height: 0;
+    border-left: 1px solid var(--panel-border);
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,138,61,0.02);
+    overflow: hidden;
+    padding: 4px;
+  }
+  .svg-pane img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    display: block;
+    cursor: zoom-in;
+  }
+  .svg-unavailable { font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-align: center; padding: 20px; }
 
   .file-reader { font-size: 13px; line-height: 1.7; white-space: pre-wrap; color: var(--text); }
   .file-reader h1, .file-reader h2 { color: var(--orange); font-family: var(--mono); font-size: 13px; margin: 10px 0 4px; }
@@ -116,6 +129,26 @@
     background: none; border: 1px solid var(--blue-dim); padding: 5px 10px; cursor: pointer; margin: 10px 12px; border-radius: 2px;
   }
   .loading, .empty-msg { padding: 20px; font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+
+  /* lightbox */
+  #lightbox {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(5,7,11,0.94);
+    z-index: 999;
+    align-items: center; justify-content: center;
+    cursor: zoom-out;
+  }
+  #lightbox.show { display: flex; }
+  #lightbox img {
+    max-width: 92vw; max-height: 92vh;
+    object-fit: contain;
+    box-shadow: 0 0 40px rgba(74,143,231,0.15);
+  }
+  #lightbox .lb-hint {
+    position: absolute; top: 16px; right: 20px;
+    font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em;
+  }
 </style>
 </head>
 <body>
@@ -183,6 +216,11 @@
   </div>
 </div>
 
+<div id="lightbox">
+  <span class="lb-hint">click to close</span>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
 <script>
   function tick() { document.getElementById('clock').textContent = new Date().toTimeString().slice(0, 8); }
   tick(); setInterval(tick, 1000);
@@ -196,7 +234,17 @@
     });
   });
 
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightbox-img');
+  lightbox.addEventListener('click', () => lightbox.classList.remove('show'));
+  function openLightbox(src, alt) {
+    lightboxImg.src = src;
+    lightboxImg.alt = alt || '';
+    lightbox.classList.add('show');
+  }
+
   const REPO = 'aninda00/Universe_1';
+  const IMAGE_EXTS = ['.svg', '.png', '.jpg', '.jpeg'];
 
   async function fetchDir(path) {
     const res = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + path);
@@ -212,8 +260,6 @@
     }).join('\n');
   }
 
-  // real folder-tree browser: navigates one level at a time, breadcrumb trail,
-  // optional SVG schematic lookup for a clicked .md file (sibling file, same basename, .svg)
   function createFolderBrowser(bodyEl, rootPath, opts) {
     opts = opts || {};
     let pathStack = [rootPath];
@@ -284,8 +330,6 @@
           item.addEventListener('click', () => showFile(entry));
           list.appendChild(item);
         }
-        // non-.md, non-dir entries (e.g. loose .svg files) are not listed directly —
-        // they're picked up automatically as schematics when their matching .md is opened
       });
       bodyEl.appendChild(list);
     }
@@ -318,13 +362,21 @@
 
       if (opts.svgLookup) {
         const baseName = entry.name.replace(/\.md$/, '');
-        const svgEntry = currentEntries.find(e => e.type === 'file' && e.name === baseName + '.png');
+        let imgEntry = null;
+        for (const ext of IMAGE_EXTS) {
+          imgEntry = currentEntries.find(e => e.type === 'file' && e.name === baseName + ext);
+          if (imgEntry) break;
+        }
         const svgPane = document.createElement('div');
         svgPane.className = 'svg-pane';
-        if (svgEntry) {
-          svgPane.innerHTML = '<img src="' + svgEntry.download_url + '" alt="' + baseName + ' schematic">';
+        if (imgEntry) {
+          const img = document.createElement('img');
+          img.src = imgEntry.download_url;
+          img.alt = baseName + ' schematic';
+          img.addEventListener('click', () => openLightbox(imgEntry.download_url, img.alt));
+          svgPane.appendChild(img);
         } else {
-          svgPane.innerHTML = '<div class="svg-unavailable">SCHEMATIC NOT AVAILABLE<br>(expected ' + baseName + '.png in this folder)</div>';
+          svgPane.innerHTML = '<div class="svg-unavailable">SCHEMATIC NOT AVAILABLE<br>(expected ' + baseName + '.svg/.png in this folder)</div>';
         }
         fv.appendChild(svgPane);
       }
