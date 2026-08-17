@@ -71,7 +71,7 @@
     font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; flex-shrink: 0;
   }
   .panel-head .id { color: var(--text-dim); }
-  .panel-title { color: var(--blue); }
+  .panel-title { color: var(--blue); font-weight: 600; font-size: 16px; }
   .panel.orange .panel-title { color: var(--orange); }
   .panel-body { flex: 1; min-height: 0; overflow: auto; position: relative; }
   .panel-body::-webkit-scrollbar { width: 6px; }
@@ -104,6 +104,7 @@
   .file-view { display: flex; height: 100%; min-height: 0; }
   .file-view.stacked { flex-direction: column; }
   .md-pane, .svg-pane { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: 16px; }
+  .md-pane::-webkit-scrollbar{ width: 6px; }
   .svg-pane { border-left: 1px solid var(--panel-border); display: flex; align-items: center; justify-content: center; background: rgba(255,138,61,0.02); }
   .svg-pane img { max-width: 100%; max-height: 100%; }
   .svg-unavailable { font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-align: center; }
@@ -141,7 +142,7 @@
 
     <section class="view active" id="view-1">
       <section class="panel" id="panel-book">
-        <div class="panel-head"><span class="panel-title">◈ Book_1</span><span class="id">SRC_01</span></div>
+        <div class="panel-head"><span class="panel-title">◈ Books</span><span class="id">SRC_01</span></div>
         <div class="panel-body" id="body-book"><div class="loading">Loading…</div></div>
       </section>
     </section>
@@ -334,7 +335,7 @@
     showList();
   }
 
-  createFolderBrowser(document.getElementById('body-book'), 'Book_1');
+  createFolderBrowser(document.getElementById('body-book'), 'Books');
   createFolderBrowser(document.getElementById('body-lore'), 'Lores');
   createFolderBrowser(document.getElementById('body-characters'), 'Characters');
   createFolderBrowser(document.getElementById('body-worlds'), 'Worlds');
