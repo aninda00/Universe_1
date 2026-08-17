@@ -223,19 +223,6 @@ function render(text) {
     groupPoints.push({ label: grp.label, x, y, right, left, rightH, leftH, i: gi });
   });
 
-  function curveXAt(dataY) {
-    if (!groupPoints.length) return midX;
-    if (dataY <= groupPoints[0].y) return groupPoints[0].x;
-    for (let idx = 0; idx < groupPoints.length - 1; idx++) {
-      const a = groupPoints[idx], b = groupPoints[idx + 1];
-      if (dataY >= a.y && dataY <= b.y) {
-        const t = (dataY - a.y) / ((b.y - a.y) || 1);
-        return a.x + (b.x - a.x) * t;
-      }
-    }
-    return groupPoints[groupPoints.length - 1].x;
-  }
-
   const line = d3.line()
     .x(d => d.x)
     .y(d => d.y)
@@ -335,17 +322,10 @@ function render(text) {
 
   let transform = d3.zoomIdentity;
   const initialScale = 0.95;
-  const initY = 60;
-  const initDataY = (height / 2 - initY) / initialScale;
-  const initX = width / 2 - curveXAt(initDataY) * initialScale;
-  transform = d3.zoomIdentity.translate(initX, initY).scale(initialScale);
+  transform = d3.zoomIdentity
+    .translate(width / 2 - midX * initialScale, 60)
+    .scale(initialScale);
   g.attr('transform', transform);
-
-  function autoCenterX(t) {
-    const dataYAtCenter = (height / 2 - t.y) / t.k;
-    const targetX = width / 2 - curveXAt(dataYAtCenter) * t.k;
-    return d3.zoomIdentity.translate(targetX, t.y).scale(t.k);
-  }
 
   const zoomBehavior = d3.zoom()
     .scaleExtent([0.15, 4])
@@ -355,7 +335,7 @@ function render(text) {
       return !event.button;
     })
     .on('zoom', (event) => {
-      transform = autoCenterX(event.transform);
+      transform = event.transform;
       g.attr('transform', transform);
     });
 
@@ -365,8 +345,7 @@ function render(text) {
   svg.on('wheel', function(event) {
     if (event.ctrlKey || event.metaKey) return;
     event.preventDefault();
-    transform = transform.translate(0, -event.deltaY / transform.k);
-    transform = autoCenterX(transform);
+    transform = transform.translate(-event.deltaX / transform.k, -event.deltaY / transform.k);
     svg.call(zoomBehavior.transform, transform);
   }, { passive: false });
 }
