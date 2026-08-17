@@ -318,13 +318,13 @@
 
       if (opts.svgLookup) {
         const baseName = entry.name.replace(/\.md$/, '');
-        const svgEntry = currentEntries.find(e => e.type === 'file' && e.name === baseName + '.svg');
+        const svgEntry = currentEntries.find(e => e.type === 'file' && e.name === baseName + '.png');
         const svgPane = document.createElement('div');
         svgPane.className = 'svg-pane';
         if (svgEntry) {
           svgPane.innerHTML = '<img src="' + svgEntry.download_url + '" alt="' + baseName + ' schematic">';
         } else {
-          svgPane.innerHTML = '<div class="svg-unavailable">SCHEMATIC NOT AVAILABLE<br>(expected ' + baseName + '.svg in this folder)</div>';
+          svgPane.innerHTML = '<div class="svg-unavailable">SCHEMATIC NOT AVAILABLE<br>(expected ' + baseName + '.png in this folder)</div>';
         }
         fv.appendChild(svgPane);
       }
